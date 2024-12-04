@@ -52,7 +52,7 @@ impl<Name: IdName> UUID<Name> {
 
     pub fn new_v0() -> Self {
         let id_name = Name::ID_NAME;
-        debug_assert!(id_name.len() <= v0::NAME_MAX);
+        debug_assert!(id_name.len() <= utils::NAME_MAX);
 
         let now = OffsetDateTime::now_utc();
 

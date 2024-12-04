@@ -1,46 +1,7 @@
 use crate::utils;
 
-pub const NAME_MIN: usize = 1;
-pub const NAME_MAX: usize = 4;
-
-pub const NAME_ENCODING_BIT_LENGTH: u8 = 5;
-pub const NAME_ENCODING: phf::OrderedMap<u8, u8> = phf::phf_ordered_map! {
-    1u8 => b'0',
-    2u8 => b'1',
-    3u8 => b'2',
-    4u8 => b'3',
-    5u8 => b'4',
-
-    6u8 => b'a',
-    7u8 => b'b',
-    8u8 => b'c',
-    9u8 => b'd',
-    10u8 => b'e',
-    11u8 => b'f',
-    12u8 => b'g',
-    13u8 => b'h',
-    14u8 => b'i',
-    15u8 => b'j',
-    16u8 => b'k',
-    17u8 => b'l',
-    18u8 => b'm',
-    19u8 => b'n',
-    20u8 => b'o',
-    21u8 => b'p',
-    22u8 => b'q',
-    23u8 => b'r',
-    24u8 => b's',
-    25u8 => b't',
-    26u8 => b'u',
-    27u8 => b'v',
-    28u8 => b'w',
-    29u8 => b'x',
-    30u8 => b'y',
-    31u8 => b'z',
-};
-
 pub const fn compile_name_valid_check(name: &str) {
-    if let NAME_MIN..=NAME_MAX = name.len() {
+    if let utils::NAME_MIN..=utils::NAME_MAX = name.len() {
         if !name.is_ascii() {
             panic!("Id name must be ascii");
         }
@@ -56,10 +17,10 @@ fn id_name_mask(name: &str) -> u128 {
 
     let name_bytes = name.as_bytes();
 
-    debug_assert!(name_bytes.len() <= NAME_MAX);
+    debug_assert!(name_bytes.len() <= utils::NAME_MAX);
 
     for &name_char in name.as_bytes() {
-        let encoding_mapping = NAME_ENCODING
+        let encoding_mapping = utils::NAME_ENCODING
             .entries()
             .find(|(_encoded, &from_char)| from_char == name_char);
 
@@ -69,13 +30,13 @@ fn id_name_mask(name: &str) -> u128 {
 
         debug_assert!(encoded_byte < 32);
 
-        mask <<= NAME_ENCODING_BIT_LENGTH;
+        mask <<= utils::NAME_ENCODING_BIT_LENGTH;
         mask |= encoded_byte as u128;
     }
 
-    let needed_padding_chars = NAME_MAX - name.len();
+    let needed_padding_chars = utils::NAME_MAX - name.len();
     for _ in 0..needed_padding_chars {
-        mask <<= NAME_ENCODING_BIT_LENGTH;
+        mask <<= utils::NAME_ENCODING_BIT_LENGTH;
     }
 
     mask <<= 108;
@@ -143,8 +104,8 @@ mod tests {
     #[test]
     fn name_map_size() {
         assert_eq!(
-            NAME_ENCODING.len(),
-            (2u8.pow(NAME_ENCODING_BIT_LENGTH as u32) - 1) as usize
+            utils::NAME_ENCODING.len(),
+            (2u8.pow(utils::NAME_ENCODING_BIT_LENGTH as u32) - 1) as usize
         );
     }
 
@@ -160,7 +121,7 @@ mod tests {
 
     #[test]
     fn name_map_sorts() {
-        let mut entries = NAME_ENCODING.entries();
+        let mut entries = utils::NAME_ENCODING.entries();
         let mut last = entries.next().unwrap();
 
         for next in entries {
