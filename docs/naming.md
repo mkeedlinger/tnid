@@ -1,0 +1,15 @@
+# TNID Project Name
+
+Look, all names are literally made up.
+
+TNI stands for **T**yped **N**amed **ID**.
+
+Valid ways to refer to TNIDs are:
+
+- TNIDs
+- TNI UUIDs
+- a TNID
+- TNID ID
+- etc
+
+The name when paired with "ID" is redundant. That's fine.

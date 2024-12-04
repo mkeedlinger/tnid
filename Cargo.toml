@@ -1,0 +1,14 @@
+[package]
+name = "tnid"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+base58ck = "0.1.0"
+phf = { version = "0.11.2", features = ["macros"] }
+rand = "0.8.5"
+thiserror = "2.0.3"
+time = "0.3.36"
+
+[dev-dependencies]
+uuid = "1"
