@@ -2,32 +2,33 @@ use rand::random;
 use std::marker::PhantomData;
 use time::{Date, OffsetDateTime, Time};
 
+mod name_encoding_0;
 mod utils;
 mod v0;
 
-pub enum TNIVariant {
+pub enum TNIDVariant {
     V0,
     V1,
     V2,
     V3,
 }
 
-pub trait IdName {
+pub trait TNIDName {
     const ID_NAME: &'static str;
-    const NAME_IS_SMALL: () = v0::compile_name_valid_check(Self::ID_NAME);
+    const NAME_IS_VALID: () = v0::compile_name_valid_check(Self::ID_NAME);
 }
 
-pub struct UUID<Name: IdName> {
+pub struct TNID<Name: TNIDName> {
     id_name: PhantomData<Name>,
     id: u128,
 }
 
-impl<Name: IdName> UUID<Name> {
+impl<Name: TNIDName> TNID<Name> {
     pub fn name(&self) -> &'static str {
         Name::ID_NAME
     }
 
-    /// The TNI ID name when the
+    /// The TNID name when the
     /// bytes are encoded using hex.
     pub fn name_hex(&self) -> String {
         let hex = format!("{:05x}", self.id >> 108);
@@ -40,16 +41,17 @@ impl<Name: IdName> UUID<Name> {
     pub fn as_u128(&self) -> u128 {
         // put here since this is unlikely to be refactored
         #![allow(path_statements)] // access causes desired effect: panic on unsatisfied contraint at compile time
-        Name::NAME_IS_SMALL;
+        Name::NAME_IS_VALID;
 
         self.id
     }
 
-    /// Generates
+    /// Same as [`Self::new_v0`]
     pub fn new_time_sortable() -> Self {
         Self::new_v0()
     }
 
+    /// Generates a new v0 TNID
     pub fn new_v0() -> Self {
         let id_name = Name::ID_NAME;
         debug_assert!(id_name.len() <= utils::NAME_MAX);
@@ -58,9 +60,6 @@ impl<Name: IdName> UUID<Name> {
 
         let years_since_unix_epoch = {
             let years_since_unix_epoch = now.year() - OffsetDateTime::UNIX_EPOCH.year();
-
-            // going back in time is impossible, right?
-            debug_assert!(years_since_unix_epoch > 50);
 
             // Using a cast instead of .try_into() means that
             // it won't fail if by some craziness it is far in the future
@@ -122,18 +121,18 @@ impl<Name: IdName> UUID<Name> {
         format!("{}.{:1>17}", self.name(), rest)
     }
 
-    pub fn tni_variant(&self) -> TNIVariant {
+    pub fn tni_variant(&self) -> TNIDVariant {
         todo!()
     }
 }
 
-impl<KindName: IdName> std::fmt::Display for UUID<KindName> {
+impl<Name: TNIDName> std::fmt::Display for TNID<Name> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.to_tni_string())
     }
 }
 
-impl<KindName: IdName> std::fmt::Debug for UUID<KindName> {
+impl<Name: TNIDName> std::fmt::Debug for TNID<Name> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.to_tni_string())
     }
@@ -150,18 +149,18 @@ mod tests {
     use super::*;
 
     struct TestId;
-    impl IdName for TestId {
+    impl TNIDName for TestId {
         const ID_NAME: &'static str = "test";
     }
 
     #[test]
     fn variant0_is_k_sortable() {
-        let mut last_id: UUID<TestId> = UUID::new_v0();
+        let mut last_id: TNID<TestId> = TNID::new_v0();
 
         for _ in 0..5 {
             std::thread::sleep(std::time::Duration::from_millis(1_010));
 
-            let id: UUID<TestId> = UUID::new_v0();
+            let id: TNID<TestId> = TNID::new_v0();
 
             dbg!(&last_id, &id);
             assert!(last_id.as_u128() < id.as_u128());

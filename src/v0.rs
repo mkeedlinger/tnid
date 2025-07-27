@@ -1,3 +1,4 @@
+use crate::name_encoding_0;
 use crate::utils;
 
 pub const fn compile_name_valid_check(name: &str) {
@@ -6,7 +7,23 @@ pub const fn compile_name_valid_check(name: &str) {
             panic!("Id name must be ascii");
         }
     } else {
-        panic!("Id name length must be between within range")
+        panic!("Id name length must be within range")
+    }
+
+    let bytes = name.as_bytes();
+    let mut i = 0;
+
+    'check_loop: while i < bytes.len() {
+        let mut j = 0;
+        while j < name_encoding_0::CHAR_MAPPING.len() {
+            if name_encoding_0::CHAR_MAPPING[j].1 == bytes[i] {
+                i += 1;
+                continue 'check_loop;
+            }
+            j += 1;
+        }
+
+        panic!("Invalid char in name");
     }
 }
 
@@ -20,23 +37,23 @@ fn id_name_mask(name: &str) -> u128 {
     debug_assert!(name_bytes.len() <= utils::NAME_MAX);
 
     for &name_char in name.as_bytes() {
-        let encoding_mapping = utils::NAME_ENCODING
-            .entries()
-            .find(|(_encoded, &from_char)| from_char == name_char);
+        let encoding_mapping = name_encoding_0::CHAR_MAPPING
+            .iter()
+            .find(|(_encoded, from_char)| *from_char == name_char);
 
-        let Some((&encoded_byte, _)) = encoding_mapping else {
+        let Some((encoded_byte, _)) = encoding_mapping else {
             panic!("ID name must be a-z0-4");
         };
 
-        debug_assert!(encoded_byte < 32);
+        debug_assert!(*encoded_byte < 32);
 
-        mask <<= utils::NAME_ENCODING_BIT_LENGTH;
-        mask |= encoded_byte as u128;
+        mask <<= name_encoding_0::CHAR_BIT_LENGTH;
+        mask |= *encoded_byte as u128;
     }
 
     let needed_padding_chars = utils::NAME_MAX - name.len();
     for _ in 0..needed_padding_chars {
-        mask <<= utils::NAME_ENCODING_BIT_LENGTH;
+        mask <<= name_encoding_0::CHAR_BIT_LENGTH;
     }
 
     mask <<= 108;
@@ -104,8 +121,8 @@ mod tests {
     #[test]
     fn name_map_size() {
         assert_eq!(
-            utils::NAME_ENCODING.len(),
-            (2u8.pow(utils::NAME_ENCODING_BIT_LENGTH as u32) - 1) as usize
+            name_encoding_0::CHAR_MAPPING.len(),
+            (2u8.pow(name_encoding_0::CHAR_BIT_LENGTH as u32) - 1) as usize
         );
     }
 
@@ -121,7 +138,7 @@ mod tests {
 
     #[test]
     fn name_map_sorts() {
-        let mut entries = utils::NAME_ENCODING.entries();
+        let mut entries = name_encoding_0::CHAR_MAPPING.iter();
         let mut last = entries.next().unwrap();
 
         for next in entries {

@@ -2,7 +2,7 @@
 
 Look, all names are literally made up.
 
-TNI stands for **T**yped **N**amed **ID**.
+TNID stands for **T**yped **N**amed **ID**.
 
 Valid ways to refer to TNIDs are:
 
