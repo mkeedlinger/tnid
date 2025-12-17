@@ -189,7 +189,7 @@ NOTE: after the null terminator, the rest of the name bits MUST be nulls.
 
 Since there are 102 bits of data that are _not_ the name and _not_ needed to
 reproduce the TNID, they can be divided into 17 six-bit chunks. This lets us use
-a base64<b>-like</b> encoding (but _not_
+a base64<i>-like</i> encoding (but _not_
 [RFC 4648 base64](https://datatracker.ietf.org/doc/html/rfc4648#section-4)).
 
 Since the TNID data is exactly divisible into 6 bit chunks, there's no need to

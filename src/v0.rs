@@ -1,53 +1,37 @@
 use crate::name_encoding;
 use crate::utils;
 
-pub const EPOCH: u16 = 2020;
-
-fn years_mask(years_since_unix_epoch: u8) -> u128 {
+fn millis_mask(millis_since_epoch: u64) -> u128 {
     let mut mask = 0u128;
 
-    let years_since_unix_epoch = years_since_unix_epoch as u128;
+    const FIRST_28_MASK: u64 = 0x0000_07ff_ffff_8000;
+    mask |=
+        ((millis_since_epoch & FIRST_28_MASK) as u128) << (FIRST_28_MASK.leading_zeros() + 64 - 20);
 
-    mask |= years_since_unix_epoch;
-    mask <<= 100;
+    const SECOND_12_MASK: u64 = 0x0000_0000_0000_7ff8;
+    mask |= ((millis_since_epoch & SECOND_12_MASK) as u128)
+        << (SECOND_12_MASK.leading_zeros() + 64 - 52);
+
+    const LAST_3_MASK: u64 = 0x0000_0000_0000_0007;
+    mask |= ((millis_since_epoch & LAST_3_MASK) as u128) << (LAST_3_MASK.leading_zeros() + 64 - 68);
 
     mask
 }
 
-fn year_seconds_mask(seconds_since_year_start: u32) -> u128 {
-    debug_assert!(seconds_since_year_start.leading_zeros() >= 7);
-    let seconds_since_year_start = seconds_since_year_start as u128;
+fn random_bits_mask(random: u64) -> u128 {
+    const MASK: u128 = 0x00000000_0000_0000_01ff_ffffffffffff;
 
-    let mut mask = 0u128;
-
-    mask |= seconds_since_year_start >> 5;
-
-    mask <<= 9;
-    mask |= seconds_since_year_start << 123 >> 123;
-
-    mask <<= 71;
-
-    mask
-}
-
-fn random_bits_mask(random: u128) -> u128 {
-    const MASK: u128 = 0x00000000_0000_007f_0fff_ffffffffffff;
+    let random = random as u128;
 
     random & MASK
 }
 
-pub fn make_from_parts(
-    name: &str,
-    years_since_unix_epoch: u8,
-    seconds_since_year_start: u32,
-    random: u128,
-) -> u128 {
+pub fn make_from_parts(name: &str, epoch_millis: u64, random: u64) -> u128 {
     let mut id = 0u128;
 
     id |= name_encoding::id_name_mask(name).unwrap(); // change unwrap to handle errors
 
-    id |= years_mask(years_since_unix_epoch);
-    id |= year_seconds_mask(seconds_since_year_start);
+    id |= millis_mask(epoch_millis);
 
     id |= utils::uuid_and_variant_mask(0);
 
@@ -58,6 +42,8 @@ pub fn make_from_parts(
 
 #[cfg(test)]
 mod tests {
+    use std::u64;
+
     use super::*;
 
     #[test]
@@ -92,31 +78,23 @@ mod tests {
     }
 
     #[test]
-    fn year_mask_correct_location() {
-        let mask = years_mask(u8::MAX);
+    fn millis_mask_correct_location() {
+        let mask = millis_mask(u64::MAX);
 
         assert_eq!(mask.leading_zeros(), 20);
-        assert_eq!(mask.trailing_zeros(), 100);
-        assert_eq!(mask.count_ones(), 8);
-    }
-
-    #[test]
-    fn year_seconds_mask_correct_location() {
-        let mask = year_seconds_mask(u32::MAX << 7 >> 7);
-
-        assert_eq!(mask.leading_zeros(), 28);
-        assert_eq!(mask.count_ones(), 25);
-        assert_eq!(mask.trailing_zeros(), 71);
+        assert_eq!(mask.count_ones(), 43);
+        assert_eq!(mask.trailing_zeros(), 57);
     }
 
     #[test]
     fn random_bits_mask_correct_location() {
-        let mask = random_bits_mask(u128::MAX);
+        let mask = random_bits_mask(u64::MAX);
 
-        dbg!(format!("{:0128b}", mask));
+        const FRONT_ZEROS: u32 = 71;
+        const BACK_ONES: u32 = 57;
 
-        assert_eq!(mask.leading_zeros(), 57);
-        assert_eq!(mask.trailing_zeros(), 0);
-        assert_eq!(mask.count_ones(), 67);
+        assert_eq!(BACK_ONES + FRONT_ZEROS, 128);
+        assert_eq!(mask.leading_zeros(), FRONT_ZEROS);
+        assert_eq!(mask.count_ones(), BACK_ONES);
     }
 }

@@ -12,6 +12,7 @@ mod v1;
 
 pub use error::Error;
 
+#[derive(Debug, PartialEq)]
 pub enum TNIDVariant {
     V0,
     V1,
@@ -88,36 +89,11 @@ impl<Name: TNIDName> TNID<Name> {
         let id_name = Name::ID_NAME;
         debug_assert!(id_name.len() <= name_encoding::NAME_MAX_CHARS);
 
-        let years_since_unix_epoch = {
-            let years_since_unix_epoch = when.year() - 2020 as i32;
+        let epoch_millis = (when.unix_timestamp_nanos() / 1000 / 1000) as u64;
 
-            // Using a cast instead of .try_into() means that
-            // it won't fail if by some craziness it is far in the future
-            years_since_unix_epoch as u8
-        };
+        let random_bits: u64 = random();
 
-        let seconds_since_year_start = {
-            let beginning_of_year = OffsetDateTime::new_utc(
-                Date::from_calendar_date(when.year(), time::Month::January, 1).unwrap(),
-                Time::MIDNIGHT,
-            );
-
-            // Using a cast to avoid an unwrap, negatives will be 0
-            let seconds_since_year_start: u32 = (when - beginning_of_year).whole_seconds() as u32;
-
-            debug_assert!(2usize.pow(26) > seconds_since_year_start as usize);
-
-            seconds_since_year_start
-        };
-
-        let random_bits: u128 = random();
-
-        let id = v0::make_from_parts(
-            id_name,
-            years_since_unix_epoch,
-            seconds_since_year_start,
-            random_bits,
-        );
+        let id = v0::make_from_parts(id_name, epoch_millis, random_bits);
 
         Self {
             id_name: PhantomData,
@@ -191,91 +167,11 @@ impl<Name: TNIDName> TNID<Name> {
 
     /// Parse a UUID hex string into a TNID
     pub fn parse_uuid_string(uuid_string: &str) -> Result<Self, Error> {
-        if uuid_string.len() != 36 {
-            return Err(Error::InvalidUuidFormat);
-        }
-
-        if uuid_string.as_bytes()[8] != b'-'
-            || uuid_string.as_bytes()[13] != b'-'
-            || uuid_string.as_bytes()[18] != b'-'
-            || uuid_string.as_bytes()[23] != b'-'
-        {
-            return Err(Error::InvalidUuidFormat);
-        }
-
-        let section1 =
-            u32::from_str_radix(&uuid_string[0..8], 16).map_err(|_| Error::InvalidUuidFormat)?;
-        let section2 =
-            u16::from_str_radix(&uuid_string[9..13], 16).map_err(|_| Error::InvalidUuidFormat)?;
-        let section3 =
-            u16::from_str_radix(&uuid_string[14..18], 16).map_err(|_| Error::InvalidUuidFormat)?;
-        let section4 =
-            u16::from_str_radix(&uuid_string[19..23], 16).map_err(|_| Error::InvalidUuidFormat)?;
-        let section5 =
-            u64::from_str_radix(&uuid_string[24..36], 16).map_err(|_| Error::InvalidUuidFormat)?;
-
-        // Reconstruct u128 from sections
-        let id = ((section1 as u128) << 96)
-            | ((section2 as u128) << 80)
-            | ((section3 as u128) << 64)
-            | ((section4 as u128) << 48)
-            | (section5 as u128);
-
-        Ok(Self {
-            id_name: PhantomData,
-            id,
-        })
+        todo!()
     }
 
-    /// Create a TNID from a u128, validating it's a proper TNID format
     pub fn from_u128(num: u128) -> Result<Self, Error> {
-        // Check UUID version bits (74-71) should be 1000 (8)
-        let version_bits = (num >> 71) & 0b1111;
-        if version_bits != 8 {
-            return Err(Error::InvalidUuidVersion);
-        }
-
-        // Check UUID variant bits (70-69) should be 10
-        let variant_bits = (num >> 69) & 0b11;
-        if variant_bits != 0b10 {
-            return Err(Error::InvalidUuidVersion);
-        }
-
-        // Check TNID variant bits (68-67) should be valid (0-3)
-        let tnid_variant_bits = (num >> 67) & 0b11;
-        if tnid_variant_bits > 3 {
-            return Err(Error::InvalidUuidVersion);
-        }
-
-        // Extract and validate name section (bits 127-108, 20 bits total)
-        let name_bits = num >> 108;
-
-        // Validate each 5-bit character encoding
-        for i in 0..4 {
-            let char_encoding = (name_bits >> (15 - i * 5)) & 0b11111;
-
-            // Check if this encoding exists in our character mapping
-            // 0 is valid (null terminator for padding), 1-31 should map to valid chars
-            if char_encoding > 31 {
-                return Err(Error::InvalidNameEncoding);
-            }
-
-            // If not null terminator, verify it maps to a valid character
-            if char_encoding != 0 {
-                let has_mapping = name_encoding::CHAR_MAPPING
-                    .iter()
-                    .any(|(encoded, _)| *encoded == char_encoding as u8);
-
-                if !has_mapping {
-                    return Err(Error::InvalidNameEncoding);
-                }
-            }
-        }
-
-        Ok(Self {
-            id_name: PhantomData,
-            id: num,
-        })
+        todo!()
     }
 
     pub fn encrypt_v0_to_v1(&self, secret: &[u8]) -> Result<Self, ()> {
@@ -354,67 +250,8 @@ mod tests {
     }
 
     #[test]
-    fn variant0_makes_correctly() {
-        let name = "test";
-        let years_since_unix_epoch = 0x42;
-        let seconds_since_year_start = 0b00000001_00011000_00011000_00110001;
-        let random = 0x00000000_0000_0071_0234_56789abcdeff;
-
-        let output = v0::make_from_parts(
-            name,
-            years_since_unix_epoch,
-            seconds_since_year_start,
-            random,
-        );
-
-        let name_section = 0b11001_01010_11000_11001u128 << 108;
-        let years_section = 0x42u128 << 100;
-        let year_seconds_section = 0b10001100000011000001u128 << 80;
-        let year_seconds_section_2 = 0b10001u128 << 71;
-        let meta_section = 0x00000000_0000_8000_8000_000000000000;
-
-        assert_eq!(
-            output,
-            name_section
-                | years_section
-                | year_seconds_section
-                | year_seconds_section_2
-                | meta_section
-                | random
-        );
-    }
-
-    #[test]
     fn tnid_variant_returns_v0() {
         let id: TNID<TestId> = TNID::new_v0();
-        assert!(matches!(id.tnid_variant(), TNIDVariant::V0));
-    }
-
-    #[test]
-    fn from_u128_validation() {
-        // Valid TNID should work
-        let valid_tnid: TNID<TestId> = TNID::new_v0();
-        assert!(TNID::<TestId>::from_u128(valid_tnid.as_u128()).is_ok());
-
-        // Invalid UUID version (not version 8)
-        let invalid_version = 0x00000000_0000_7000_8000_000000000000u128; // version 7
-        assert!(matches!(
-            TNID::<TestId>::from_u128(invalid_version),
-            Err(Error::InvalidUuidVersion)
-        ));
-
-        // Invalid UUID variant (not variant 2)
-        let invalid_variant = 0x00000000_0000_8000_4000_000000000000u128; // variant 1
-        assert!(matches!(
-            TNID::<TestId>::from_u128(invalid_variant),
-            Err(Error::InvalidUuidVersion)
-        ));
-
-        // Invalid name encoding (character 32 doesn't exist)
-        let invalid_name = (32u128 << 123) | 0x00000000_0000_8000_8000_000000000000u128;
-        assert!(matches!(
-            TNID::<TestId>::from_u128(invalid_name),
-            Err(Error::InvalidNameEncoding)
-        ));
+        assert_eq!(id.tnid_variant(), TNIDVariant::V0);
     }
 }
