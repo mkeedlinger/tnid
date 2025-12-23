@@ -1,36 +1,83 @@
+#![deny(unsafe_code)]
+#![deny(rustdoc::broken_intra_doc_links)]
+
+// todo
+// #![warn(missing_docs)]
+
 use fpe::ff1::NumeralString;
 use rand::random;
 use std::marker::PhantomData;
-use time::{Date, OffsetDateTime, Time};
+use time::OffsetDateTime;
 
 mod data_encoding;
 mod error;
 mod name_encoding;
 mod utils;
+mod uuidlike;
 mod v0;
 mod v1;
 
 pub use error::Error;
+pub use uuidlike::UUIDLike;
 
+/// The 4 possible TNID variants
+///
+/// Similar to UUID variants, TNID variants have different construction that makes them useful for different situations.
 #[derive(Debug, PartialEq)]
 pub enum TNIDVariant {
+    /// V0 is most like UUIDv7, and is meant to be time-sortable
     V0,
+    /// V1 is most like UUIDv4, and is meant to maximize entropy (randomness)
     V1,
+    /// V2 is undefined but reserved for future use
     V2,
+    /// V3 is undefined but reserved for future use
     V3,
 }
 
+/// Intended to be used on empty structs to create type checked TNID names.
+///
+/// ```rust
+/// # use tnid::TNIDName;
+/// # use tnid::TNID;
+///
+/// struct ExampleName;
+/// impl TNIDName for ExampleName {
+///     const ID_NAME: &str = "ex";
+/// }
+///
+/// # let _ = TNID::<ExampleName>::new_v0();
+/// ```
+///
+/// The string you set as `ID_NAME` is checked to be a valid TNID name at compile time (as long as you actually use the )
+/// ```rust,should_panic
+/// # use tnid::TNIDName;
+/// # use tnid::TNID;
+///
+/// struct InvalidName;
+/// impl TNIDName for InvalidName {
+///     const ID_NAME: &str = "2long";
+/// }
+///
+/// # let _ = TNID::<InvalidName>::new_v0();
+/// ```
 pub trait TNIDName {
     const ID_NAME: &'static str;
     const NAME_IS_VALID: () = name_encoding::name_valid_check(Self::ID_NAME);
 }
 
+/// The base TNID type
+///
+/// Makes use of the [`TNIDName`] trait for static checking of the different names
+///
+/// In general, TNIDs try to be relatively strict about how they can be used and represented at compile time. That means that any given instance of a TNID *should* be valid. In cases where you want to work with or inspect potentially invalid TNIDs, use a [`UUIDLike`].
 pub struct TNID<Name: TNIDName> {
     id_name: PhantomData<Name>,
     id: u128,
 }
 
 impl<Name: TNIDName> TNID<Name> {
+    const NAME_IS_VALID: () = name_encoding::name_valid_check(Name::ID_NAME);
     pub fn name(&self) -> &'static str {
         Name::ID_NAME
     }
@@ -48,7 +95,7 @@ impl<Name: TNIDName> TNID<Name> {
     pub fn as_u128(&self) -> u128 {
         // put here since this is unlikely to be refactored
         #![allow(path_statements)] // access causes desired effect: panic on unsatisfied contraint at compile time
-        Name::NAME_IS_VALID;
+        Self::NAME_IS_VALID;
 
         self.id
     }
@@ -239,7 +286,7 @@ mod tests {
         let mut last_id: TNID<TestId> = TNID::new_v0_at_time(test_time);
 
         for _ in 1..10_000 {
-            test_time += Duration::milliseconds(1001);
+            test_time += Duration::milliseconds(1);
             let id: TNID<TestId> = TNID::new_v0_at_time(test_time);
 
             assert!(last_id.as_u128() < id.as_u128());

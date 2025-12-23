@@ -116,7 +116,7 @@ pub(crate) fn extract_data_bits(id: u128) -> u128 {
     const BETWEEN_MIDDLE_RIGHT: i32 = 2;
     let extracted = extracted | ((id & MIDDLE_DATA_SECTION_MASK) >> BETWEEN_MIDDLE_RIGHT);
 
-    const BETWEEN_LEFT_MIDDLE: i32 = BETWEEN_MIDDLE_RIGHT + 4;;
+    const BETWEEN_LEFT_MIDDLE: i32 = BETWEEN_MIDDLE_RIGHT + 4;
     let extracted = extracted | ((id & LEFT_DATA_SECTION_MASK) >> BETWEEN_LEFT_MIDDLE);
 
     extracted

@@ -107,11 +107,16 @@ UUIDv4.
 
 `2222.2222.2222.2222.2222.2222.2222.2222.2222.2222.2222.2222`
 
-1. Name (5 nibbles = 4 characters)
-2. Random Bits
-3. UUID version
-4. UUID variant (bits 0b10 per the spec)
-5. TNID variant (bits 0b01 for variant 1)
+1. Name\
+   (5 nibbles = 4 characters)
+2. Random Bits\
+   (100 bits)
+3. UUID version\
+   (4 bits)
+4. UUID variant (bits 0b10 per the spec)\
+   (2 bits)
+5. TNID variant (bits 0b01 for variant 1)\
+   (2 bits)
 
 #### Goals and Non-goals
 
@@ -123,7 +128,7 @@ Goals:
 
 Non-goals:
 
-- Completely maximize entropy
+- Completely maximize entropy over TNID's other goals
 
 #### Caveats
 
@@ -132,7 +137,7 @@ Non-goals:
 Compared to UUIDv4, TNIDv1 has 22 fewer random bits (UUIDv4 has 122 entropy
 bits, while TNIDv1 has 100). Assuming you created 100 billion IDs every second
 for 20 years straight, you will use 0.00000029% of the possible addresses. For
-most use cases this is expected to be vastly suffiecient.
+most use cases this is expected to be vastly sufficient.
 
 ### Variant 2
 
@@ -269,6 +274,5 @@ it will not work well for _all_ use cases. Particularly use cases generating
 such massive volumes of IDs that the collision risk justifies sacrificing names
 or other features for increased time precision or entropy.
 
-Such cases are exceedingly rare, and TNIDs attempt to address the more common
-cases. These cases might appreciate compatibility and features that help with
-correctness.
+Such cases are exceedingly rare, and TNIDs are designed to increase usablility
+for the more common cases.
