@@ -110,6 +110,7 @@ pub fn id_data_to_string(id: u128) -> String {
 const RIGHT_DATA_SECTION_MASK: u128 = 0x00000000_0000_0000_3fff_ffffffffffff;
 const MIDDLE_DATA_SECTION_MASK: u128 = 0x00000000_0000_0fff_0000_000000000000;
 const LEFT_DATA_SECTION_MASK: u128 = 0x00000fff_ffff_0000_0000_000000000000;
+/// Get all bits except the name and UUID parts
 pub(crate) fn extract_data_bits(id: u128) -> u128 {
     let extracted = id & RIGHT_DATA_SECTION_MASK;
 

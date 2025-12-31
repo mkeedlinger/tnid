@@ -9,6 +9,8 @@ use std::marker::PhantomData;
 use time::OffsetDateTime;
 
 mod data_encoding;
+#[cfg(feature = "encryption")]
+mod encryption;
 mod error;
 mod name_encoding;
 mod tnid_variant;
@@ -161,7 +163,8 @@ impl<Name: TNIDName> TNID<Name> {
         )
     }
 
-    pub fn tnid_variant(&self) -> TNIDVariant {
+    /// Gets the TNID variant
+    pub fn variant(&self) -> TNIDVariant {
         let variant_bits = (self.id >> 60) as u8;
 
         TNIDVariant::from_u8(variant_bits)
@@ -200,32 +203,48 @@ impl<Name: TNIDName> TNID<Name> {
     }
 
     #[cfg(feature = "encryption")]
-    pub fn encrypt_v0_to_v1(&self, secret: &[u8]) -> Result<Self, ()> {
-        use aes::Aes128;
-        use fpe::ff1::{BinaryNumeralString, FF1};
+    pub fn encrypt_v0_to_v1(&self, secret: [u8; 16]) -> Result<Self, ()> {
+        // Extract only the secret data bits (100 bits, excludes TNID variant)
+        let secret_data = encryption::extract_secret_data_bits(self.id);
 
-        let data_bits = data_encoding::extract_data_bits(self.id).to_le_bytes();
+        // Encrypt the secret data
+        let encrypted_data = encryption::encrypt(secret_data, &secret);
 
-        let ff = FF1::<Aes128>::new(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 0], 2).unwrap();
+        // Expand back to proper bit positions
+        let expanded = encryption::expand_secret_data_bits(encrypted_data);
 
-        let encrypted = ff
-            .encrypt(&[], &BinaryNumeralString::from_bytes_le(&data_bits))
-            .unwrap()
-            .to_bytes_le();
+        // Preserve name and UUID metadata, replace data bits with encrypted version
+        let id = (self.id & !encryption::COMPLETE_SECRET_DATA_MASK) | expanded;
 
-        let encrypted = encrypted.as_slice();
-
-        dbg!(encrypted);
-
-        let encrypted: [u8; 16] = encrypted.try_into().unwrap();
-
-        let encrypted = u128::from_le_bytes(encrypted);
-
-        dbg!(data_encoding::extract_data_bits(self.id), encrypted);
+        // Change variant from V0 to V1
+        let id = utils::change_variant(id, TNIDVariant::V1);
 
         Ok(Self {
             id_name: PhantomData,
-            id: encrypted,
+            id,
+        })
+    }
+
+    #[cfg(feature = "encryption")]
+    pub fn decrypt_v1_to_v0(&self, secret: [u8; 16]) -> Result<Self, ()> {
+        // Extract only the secret data bits (100 bits, excludes TNID variant)
+        let encrypted_data = encryption::extract_secret_data_bits(self.id);
+
+        // Decrypt the secret data
+        let decrypted_data = encryption::decrypt(encrypted_data, &secret);
+
+        // Expand back to proper bit positions
+        let expanded = encryption::expand_secret_data_bits(decrypted_data);
+
+        // Preserve name and UUID metadata, replace data bits with decrypted version
+        let id = (self.id & !encryption::COMPLETE_SECRET_DATA_MASK) | expanded;
+
+        // Change variant from V1 to V0
+        let id = utils::change_variant(id, TNIDVariant::V0);
+
+        Ok(Self {
+            id_name: PhantomData,
+            id,
         })
     }
 }
@@ -272,6 +291,10 @@ mod tests {
     #[test]
     fn tnid_variant_returns_v0() {
         let id: TNID<TestId> = TNID::new_v0();
-        assert_eq!(id.tnid_variant(), TNIDVariant::V0);
+        assert_eq!(id.variant(), TNIDVariant::V0);
     }
+
+    #[cfg(feature = "encryption")]
+    #[test]
+    fn encryption_bidirectional() {}
 }

@@ -14,6 +14,9 @@ pub enum TNIDVariant {
 }
 
 impl TNIDVariant {
+    /// Convert a u8 to a [`TNIDVariant`].
+    ///
+    /// Ignores the top 6 bits
     pub fn from_u8(variant_bits: u8) -> TNIDVariant {
         let variant_bits = variant_bits & 0b11;
 
@@ -23,6 +26,15 @@ impl TNIDVariant {
             2 => TNIDVariant::V2,
             3 => TNIDVariant::V3,
             _ => unreachable!("2 bits can only have 4 values"),
+        }
+    }
+
+    pub fn as_u8(&self) -> u8 {
+        match self {
+            TNIDVariant::V0 => 0,
+            TNIDVariant::V1 => 1,
+            TNIDVariant::V2 => 2,
+            TNIDVariant::V3 => 3,
         }
     }
 }
