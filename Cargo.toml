@@ -1,15 +1,19 @@
 [package]
 name = "tnid"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-aes = "0.8.4"
-base58ck = "0.1.0"
-fpe = "0.6.1"
-phf = { version = "0.11.2", features = ["macros"] }
-rand = "0.8.5"
-time = "0.3.36"
+aes = {version = "0.8.4", optional = true}
+fpe = {version = "0.6.1", optional = true}
+rand = {version = "0.8.5", optional = true}
+time = {version = "0.3.36", optional = true}
 
 [dev-dependencies]
 uuid = "1"
+
+[features]
+default = ["time", "rand"]
+encryption = ["dep:aes", "dep:fpe"]
+time = ["dep:time"]
+rand = ["dep:rand"]

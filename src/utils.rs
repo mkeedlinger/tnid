@@ -1,6 +1,6 @@
-pub fn uuid_and_variant_mask(tnid_variant: u8) -> u128 {
-    const UUID_V8_MASK: u128 = 0x00000000_0000_8000_8000_000000000000;
+pub const UUID_V8_MASK: u128 = 0x00000000_0000_8000_8000_000000000000;
 
+pub fn uuid_and_variant_mask(tnid_variant: u8) -> u128 {
     // should only take at most 2 bits
     debug_assert!(tnid_variant.leading_zeros() >= 6);
 

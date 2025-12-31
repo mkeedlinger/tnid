@@ -4,7 +4,6 @@
 // todo
 // #![warn(missing_docs)]
 
-use fpe::ff1::NumeralString;
 use rand::random;
 use std::marker::PhantomData;
 use time::OffsetDateTime;
@@ -12,28 +11,15 @@ use time::OffsetDateTime;
 mod data_encoding;
 mod error;
 mod name_encoding;
+mod tnid_variant;
 mod utils;
 mod uuidlike;
 mod v0;
 mod v1;
 
 pub use error::Error;
+pub use tnid_variant::TNIDVariant;
 pub use uuidlike::UUIDLike;
-
-/// The 4 possible TNID variants
-///
-/// Similar to UUID variants, TNID variants have different construction that makes them useful for different situations.
-#[derive(Debug, PartialEq)]
-pub enum TNIDVariant {
-    /// V0 is most like UUIDv7, and is meant to be time-sortable
-    V0,
-    /// V1 is most like UUIDv4, and is meant to maximize entropy (randomness)
-    V1,
-    /// V2 is undefined but reserved for future use
-    V2,
-    /// V3 is undefined but reserved for future use
-    V3,
-}
 
 /// Intended to be used on empty structs to create type checked TNID names.
 ///
@@ -43,7 +29,7 @@ pub enum TNIDVariant {
 ///
 /// struct ExampleName;
 /// impl TNIDName for ExampleName {
-///     const ID_NAME: &str = "ex";
+///     const ID_NAME: &str = "exna";
 /// }
 ///
 /// # let _ = TNID::<ExampleName>::new_v0();
@@ -62,7 +48,10 @@ pub enum TNIDVariant {
 /// # let _ = TNID::<InvalidName>::new_v0();
 /// ```
 pub trait TNIDName {
+    /// Must be overridden with the name of your ID
     const ID_NAME: &'static str;
+
+    /// Provided impl does a compile time check that your ID_NAME is valid. SHOULD NOT BE OVERRIDDEN
     const NAME_IS_VALID: () = name_encoding::name_valid_check(Self::ID_NAME);
 }
 
@@ -77,7 +66,11 @@ pub struct TNID<Name: TNIDName> {
 }
 
 impl<Name: TNIDName> TNID<Name> {
+    // this check is redundant with TNIDName's, but has an important difference:
+    // TNIDName's NAME_IS_VALID can be overridden. This could reduce the compile-time strictness.
+    // It is, however, nice to still have the check there, as this check in TNID only happens if TNID is used, not necessarily when TNIDName is impled on a type
     const NAME_IS_VALID: () = name_encoding::name_valid_check(Name::ID_NAME);
+
     pub fn name(&self) -> &'static str {
         Name::ID_NAME
     }
@@ -93,34 +86,39 @@ impl<Name: TNIDName> TNID<Name> {
     }
 
     pub fn as_u128(&self) -> u128 {
-        // put here since this is unlikely to be refactored
+        // put here since this is deemed most unlikely to be refactored
         #![allow(path_statements)] // access causes desired effect: panic on unsatisfied contraint at compile time
         Self::NAME_IS_VALID;
 
         self.id
     }
 
-    /// Same as [`Self::new_v0`]
+    /// Same as [`Self::new_v0`], just a more friendly name
     pub fn new_time_ordered() -> Self {
         Self::new_v0()
     }
 
     /// Generates a new v0 TNID
+    ///
+    /// This variant focuses on time sortability, similar to UUIDv7
     pub fn new_v0() -> Self {
-        Self::new_v0_at_time(OffsetDateTime::now_utc())
+        Self::new_v0_with_time(OffsetDateTime::now_utc())
     }
 
+    /// Same as [`Self::new_v1`], just a more friendly name
     pub fn new_high_entropy() -> Self {
         Self::new_v1()
     }
 
-    /// Generates a new v1 TNID (high entropy)
+    /// Generates a new v1 TNID
+    ///
+    /// This variant focuses on maximizing entropy, similar to UUIDv4
     pub fn new_v1() -> Self {
         Self::new_v1_with_random(random())
     }
 
-    /// Generates a new v1 TNID with specified randomness
-    fn new_v1_with_random(random_bits: u128) -> Self {
+    /// Generates a new v1 TNID with provided randomness
+    pub fn new_v1_with_random(random_bits: u128) -> Self {
         let id_name = Name::ID_NAME;
         debug_assert!(id_name.len() <= name_encoding::NAME_MAX_CHARS);
 
@@ -132,11 +130,11 @@ impl<Name: TNIDName> TNID<Name> {
         }
     }
 
-    fn new_v0_at_time(when: OffsetDateTime) -> Self {
+    pub fn new_v0_with_time(time: OffsetDateTime) -> Self {
         let id_name = Name::ID_NAME;
         debug_assert!(id_name.len() <= name_encoding::NAME_MAX_CHARS);
 
-        let epoch_millis = (when.unix_timestamp_nanos() / 1000 / 1000) as u64;
+        let epoch_millis = (time.unix_timestamp_nanos() / 1000 / 1000) as u64;
 
         let random_bits: u64 = random();
 
@@ -148,79 +146,60 @@ impl<Name: TNIDName> TNID<Name> {
         }
     }
 
-    pub fn to_tnid_string(&self) -> String {
-        let mut stripped_id_info = 0u128;
-
-        // get up to UUID version
-        stripped_id_info |= self.id << 20 >> 20 >> 80;
-
-        // get up to variant info
-        stripped_id_info <<= 12;
-        stripped_id_info |= self.id << 52 >> 52 >> 64;
-
-        // get TNI variant and rest of random
-        stripped_id_info <<= 62;
-        stripped_id_info |= self.id << 66 >> 66;
-
-        // 26 most significant bits should be zeros
-        debug_assert!(stripped_id_info < u128::MAX << 22 >> 22);
-
-        let rest = base58ck::encode(&stripped_id_info.to_be_bytes()[4..]);
-
-        debug_assert!(rest.len() <= 17);
-
-        format!("{}.{:1>17}", self.name(), rest)
-    }
-
-    pub fn tnid_variant(&self) -> TNIDVariant {
-        let variant_bits = (self.id >> 60) & 0b11;
-
-        match variant_bits {
-            0 => TNIDVariant::V0,
-            1 => TNIDVariant::V1,
-            2 => TNIDVariant::V2,
-            3 => TNIDVariant::V3,
-            _ => unreachable!("2 bits can only have 4 values"),
+    pub fn new_v0_with_parts(epoch_millis: u64, random: u64) -> Self {
+        Self {
+            id_name: PhantomData,
+            id: v0::make_from_parts(Name::ID_NAME, epoch_millis, random),
         }
     }
 
-    /// Convert to UUID hex string format (lowercase)
-    pub fn to_uuid_string(&self) -> String {
-        self.to_uuid_string_cased(false)
+    pub fn as_tnid_string(&self) -> String {
+        format!(
+            "{}.{}",
+            self.name(),
+            data_encoding::id_data_to_string(self.id)
+        )
+    }
+
+    pub fn tnid_variant(&self) -> TNIDVariant {
+        let variant_bits = (self.id >> 60) as u8;
+
+        TNIDVariant::from_u8(variant_bits)
     }
 
     /// Convert to UUID hex string format with specified case
     pub fn to_uuid_string_cased(&self, uppercase: bool) -> String {
-        let id = self.id;
-
-        // Format as UUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-        let first_section = (id >> 96) as u32;
-        let second_section = ((id >> 80) & 0xFFFF) as u16;
-        let third_section = ((id >> 64) & 0xFFFF) as u16;
-        let fourth_section = ((id >> 48) & 0xFFFF) as u16;
-        let fifth_section = (id & 0xFFFFFFFFFFFF) as u64;
-        if uppercase {
-            format!(
-                "{:08X}-{:04X}-{:04X}-{:04X}-{:012X}",
-                first_section, second_section, third_section, fourth_section, fifth_section
-            )
-        } else {
-            format!(
-                "{:08x}-{:04x}-{:04x}-{:04x}-{:012x}",
-                first_section, second_section, third_section, fourth_section, fifth_section
-            )
-        }
+        UUIDLike::new(self.id).to_uuid_string_cased(uppercase)
     }
 
     /// Parse a UUID hex string into a TNID
-    pub fn parse_uuid_string(uuid_string: &str) -> Result<Self, Error> {
-        todo!()
+    pub fn parse_uuid_string(uuid_string: &str) -> Option<Self> {
+        let id = UUIDLike::parse_uuid_string(uuid_string)?.as_u128();
+
+        Self::from_u128(id)
     }
 
-    pub fn from_u128(num: u128) -> Result<Self, Error> {
-        todo!()
+    pub fn from_u128(num: u128) -> Option<Self> {
+        // check UUIDv8 version and variant bits
+        if (num & utils::UUID_V8_MASK) != utils::UUID_V8_MASK {
+            return None;
+        }
+
+        // check name encoding matches expected name
+        let name_bits_mask = 0xFFFFF_u128 << 108; // top 20 bits
+        let actual_name_bits = num & name_bits_mask;
+        let expected_name_bits = name_encoding::id_name_mask(Name::ID_NAME)?;
+        if actual_name_bits != expected_name_bits {
+            return None;
+        }
+
+        Some(Self {
+            id: num,
+            id_name: PhantomData,
+        })
     }
 
+    #[cfg(feature = "encryption")]
     pub fn encrypt_v0_to_v1(&self, secret: &[u8]) -> Result<Self, ()> {
         use aes::Aes128;
         use fpe::ff1::{BinaryNumeralString, FF1};
@@ -253,25 +232,19 @@ impl<Name: TNIDName> TNID<Name> {
 
 impl<Name: TNIDName> std::fmt::Display for TNID<Name> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_tnid_string())
+        write!(f, "{}", self.as_tnid_string())
     }
 }
 
 impl<Name: TNIDName> std::fmt::Debug for TNID<Name> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_tnid_string())
+        write!(f, "{}", self.as_tnid_string())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn fpe_test() {
-        let id: TNID<TestId> = TNID::new_time_ordered();
-        id.encrypt_v0_to_v1(&[1, 2]).unwrap();
-    }
 
     struct TestId;
     impl TNIDName for TestId {
@@ -283,14 +256,14 @@ mod tests {
         use time::Duration;
 
         let mut test_time = OffsetDateTime::now_utc();
-        let mut last_id: TNID<TestId> = TNID::new_v0_at_time(test_time);
+        let mut last_id: TNID<TestId> = TNID::new_v0_with_time(test_time);
 
         for _ in 1..10_000 {
             test_time += Duration::milliseconds(1);
-            let id: TNID<TestId> = TNID::new_v0_at_time(test_time);
+            let id: TNID<TestId> = TNID::new_v0_with_time(test_time);
 
             assert!(last_id.as_u128() < id.as_u128());
-            assert!(last_id.to_tnid_string() < id.to_tnid_string());
+            assert!(last_id.as_tnid_string() < id.as_tnid_string());
 
             last_id = id;
         }

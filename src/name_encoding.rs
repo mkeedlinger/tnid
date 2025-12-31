@@ -68,13 +68,17 @@ pub const CHAR_MAPPING: [(u8, u8); 31] = [
 ];
 
 pub fn id_name_mask(name: &str) -> Option<u128> {
-    let mut mask = 0u128;
-
-    debug_assert!(name.is_ascii());
+    if !name.is_ascii() {
+        return None;
+    }
 
     let name_bytes = name.as_bytes();
 
-    debug_assert!(name_bytes.len() <= NAME_MAX_CHARS);
+    if name_bytes.len() > NAME_MAX_CHARS {
+        return None;
+    }
+
+    let mut mask = 0u128;
 
     for &name_char in name.as_bytes() {
         let encoding_mapping = CHAR_MAPPING
