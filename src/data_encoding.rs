@@ -107,6 +107,27 @@ pub fn id_data_to_string(id: u128) -> String {
     s
 }
 
+pub fn string_to_id_data(s: &str) -> Option<u128> {
+    // Validate length
+    if s.len() != DATA_CHAR_ENCODING_LEN as usize {
+        return None;
+    }
+
+    let mut result = 0u128;
+
+    for c in s.bytes() {
+        // Reverse lookup in CHAR_MAPPING
+        let value = CHAR_MAPPING
+            .iter()
+            .find(|(_, char)| *char == c)
+            .map(|(val, _)| val)?;
+
+        result = (result << CHAR_BIT_LENGTH) | (*value as u128);
+    }
+
+    Some(result)
+}
+
 const RIGHT_DATA_SECTION_MASK: u128 = 0x00000000_0000_0000_3fff_ffffffffffff;
 const MIDDLE_DATA_SECTION_MASK: u128 = 0x00000000_0000_0fff_0000_000000000000;
 const LEFT_DATA_SECTION_MASK: u128 = 0x00000fff_ffff_0000_0000_000000000000;
@@ -121,6 +142,24 @@ pub(crate) fn extract_data_bits(id: u128) -> u128 {
     let extracted = extracted | ((id & LEFT_DATA_SECTION_MASK) >> BETWEEN_LEFT_MIDDLE);
 
     extracted
+}
+
+/// Expand compacted data bits back into their positions (inverse of extract_data_bits)
+pub(crate) fn expand_data_bits(compact_bits: u128) -> u128 {
+    // Right section stays in place
+    let expanded = compact_bits & RIGHT_DATA_SECTION_MASK;
+
+    // Middle section shifts left
+    const BETWEEN_MIDDLE_RIGHT: i32 = 2;
+    let middle_mask = MIDDLE_DATA_SECTION_MASK >> BETWEEN_MIDDLE_RIGHT;
+    let expanded = expanded | ((compact_bits & middle_mask) << BETWEEN_MIDDLE_RIGHT);
+
+    // Left section shifts left
+    const BETWEEN_LEFT_MIDDLE: i32 = BETWEEN_MIDDLE_RIGHT + 4;
+    let left_mask = LEFT_DATA_SECTION_MASK >> BETWEEN_LEFT_MIDDLE;
+    let expanded = expanded | ((compact_bits & left_mask) << BETWEEN_LEFT_MIDDLE);
+
+    expanded
 }
 
 #[cfg(test)]
@@ -155,5 +194,21 @@ mod tests {
         let encoded = id_data_to_string(0u128);
         assert_eq!(encoded.len(), DATA_CHAR_ENCODING_LEN.into());
         assert_eq!(encoded, String::from("-----------------"));
+    }
+
+    #[test]
+    fn expand_data_bits_roundtrip() {
+        let original = COMPLETE_DATA_MASK;
+        let extracted = extract_data_bits(original);
+        let expanded = expand_data_bits(extracted);
+        assert_eq!(expanded, original);
+    }
+
+    #[test]
+    fn string_to_id_data_roundtrip() {
+        let original_id = 0x00000abc_def1_2345_6789_abcdef123456u128;
+        let string = id_data_to_string(original_id);
+        let decoded = string_to_id_data(&string).unwrap();
+        assert_eq!(decoded, extract_data_bits(original_id));
     }
 }

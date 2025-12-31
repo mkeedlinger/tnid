@@ -62,9 +62,18 @@ pub trait TNIDName {
 /// Makes use of the [`TNIDName`] trait for static checking of the different names
 ///
 /// In general, TNIDs try to be relatively strict about how they can be used and represented at compile time. That means that any given instance of a TNID *should* be valid. In cases where you want to work with or inspect potentially invalid TNIDs, use a [`UUIDLike`].
+#[derive(PartialEq, Eq)]
 pub struct TNID<Name: TNIDName> {
     id_name: PhantomData<Name>,
     id: u128,
+}
+
+impl<Name: TNIDName> Copy for TNID<Name> {}
+
+impl<Name: TNIDName> Clone for TNID<Name> {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<Name: TNIDName> TNID<Name> {
@@ -182,6 +191,31 @@ impl<Name: TNIDName> TNID<Name> {
         Self::from_u128(id)
     }
 
+    pub fn parse_tnid_string(tnid_string: &str) -> Option<Self> {
+        // Split on dot separator
+        let (name, data_str) = tnid_string.split_once('.')?;
+
+        // Validate name matches expected name
+        if name != Name::ID_NAME {
+            return None;
+        }
+
+        // Decode data string to compact 102 bits
+        let compact_data = data_encoding::string_to_id_data(data_str)?;
+
+        // Expand to proper bit positions
+        let data_bits = data_encoding::expand_data_bits(compact_data);
+
+        // Get name bits
+        let name_bits = name_encoding::id_name_mask(name)?;
+
+        // Combine: name + UUID metadata + data
+        let id = name_bits | utils::UUID_V8_MASK | data_bits;
+
+        // Validate and construct (this checks UUID bits and name encoding)
+        Self::from_u128(id)
+    }
+
     pub fn from_u128(num: u128) -> Option<Self> {
         // check UUIDv8 version and variant bits
         if (num & utils::UUID_V8_MASK) != utils::UUID_V8_MASK {
@@ -296,5 +330,40 @@ mod tests {
 
     #[cfg(feature = "encryption")]
     #[test]
-    fn encryption_bidirectional() {}
+    fn encryption_bidirectional() {
+        let secret = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+
+        let original: TNID<TestId> = TNID::new_v0();
+        assert_eq!(original.variant(), TNIDVariant::V0);
+
+        let encrypted = original.encrypt_v0_to_v1(secret).unwrap();
+        assert_eq!(encrypted.variant(), TNIDVariant::V1);
+
+        dbg!(encrypted, original);
+
+        let decrypted = encrypted.decrypt_v1_to_v0(secret).unwrap();
+        assert_eq!(decrypted.variant(), TNIDVariant::V0);
+
+        assert_eq!(decrypted.as_u128(), original.as_u128());
+    }
+
+    #[test]
+    fn parse_tnid_string_roundtrip() {
+        let original: TNID<TestId> = TNID::new_v0();
+        let tnid_string = original.as_tnid_string();
+        let parsed = TNID::<TestId>::parse_tnid_string(&tnid_string).unwrap();
+        assert_eq!(parsed.as_u128(), original.as_u128());
+    }
+
+    #[test]
+    fn parse_tnid_string_invalid_name() {
+        let result = TNID::<TestId>::parse_tnid_string("wrong.abc123xyz");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn parse_tnid_string_no_separator() {
+        let result = TNID::<TestId>::parse_tnid_string("testabc123xyz");
+        assert!(result.is_none());
+    }
 }
