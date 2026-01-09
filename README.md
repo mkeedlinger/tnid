@@ -1,5 +1,7 @@
 # TNID
 
+This repository contains the TNID specification.
+
 TNIDs are UUIDv8-compatible identifiers with a human-readable name field and
 compile-time type safety (where possible).
 
@@ -23,8 +25,9 @@ TNIDs work anywhere a UUID is expected; all valid TNIDs are valid UUIDs.
 
 ## Resources
 
-- [Specification](./spec.md) - Complete TNID specification
-- [Rust Implementation](https://github.com/mkeedlinger/tnid-rust) - Reference
-  implementation and crate
-- [Website](https://github.com/mkeedlinger/tnid-site) - Published at
-  [tnid.info](https://tnid.info) with helpful illustrations
+- [spec.md](./spec.md) - Full specification
+- [tnid.info](https://tnid.info) - Website with illustrations and examples
+- [tnid.info/implementations](https://tnid.info/implementations/) - Known
+  implementations in various languages
+- [Reference Implementation](https://github.com/mkeedlinger/tnid-rust) - A
+  reference implementation in Rust
