@@ -1,5 +1,8 @@
 # TNID Spec
 
+Version: 0
+Status: Draft
+
 TNIDs are based on
 [UUIDv8](https://datatracker.ietf.org/doc/html/rfc9562#name-uuid-version-8).
 **This means that TNIDs should be able to be used anywhere that expects a
