@@ -65,6 +65,8 @@ There are 2 bits that denote the TNID variant, allowing for 4 possible variants.
 | Variant 2    | -          | Reserved for future use | -                    |
 | Variant 3    | -          | Reserved for future use | -                    |
 
+Parsers SHOULD accept TNIDs with reserved variants.
+
 ### Variant 0
 
 Variant 0 is meant to be time sortable when sorted by its three representations
@@ -152,9 +154,9 @@ type).
 ##### Future IDs
 
 Since the time component only uses 43 bits to represent milliseconds, TNIDv0 IDs
-can only be created until the year 2248. At that point what happens is
-undefined, however implementations SHOULD handle this case gracefully
-(the reference Rust implementation chooses to allow the int to wrap around).
+can only represent times until approximately year 2248. After that, the
+timestamp overflows. Implementations SHOULD allow the value to wrap rather than
+error.
 
 ### Variant 1
 
@@ -265,6 +267,8 @@ TNIDs use a 5 bit character encoding. The character ordering (0-4, then a-z) was
 specifically chosen to match ASCII lexicographic sorting, ensuring that TNID
 names sort correctly as both encoded bits and as strings. For example, name "a"
 < "b" < "z" both as characters and in their encoded bit representation.
+
+The name MUST contain at least one non-null character.
 
 If a name is less than the maximum 4 characters, then there MUST be nulls
 filling in the unused space at the end (least significant bits). For example, if
