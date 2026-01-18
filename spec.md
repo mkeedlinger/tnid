@@ -18,6 +18,12 @@ TNIDs include some extra features that developers may find useful:
   lexicographically sortable (unlike UUID's case insensitive hex
   representation).
 
+## Terminology
+
+The key words "MUST", "MUST NOT", "SHOULD", "SHOULD NOT", and "MAY" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+
+**TNID Variant:** A scheme for interpreting the Data Bits. TNID uses the term "variant" analogously to how UUID uses "version" to denote different structural interpretations.
+
 ## Bit Layout
 
 Below is the common aspects of all TNID variants.
@@ -34,13 +40,13 @@ Below is the common aspects of all TNID variants.
 
 1. Name\
    (20 bits) (5 nibbles = 4 encoded characters)\
-   Always encoded using the [TNID Name Encoding](#tnid-name-encoding)
+   MUST be encoded using the [TNID Name Encoding](#tnid-name-encoding)
 2. UUID version\
    (4 bits)\
-   Always `0x8` for UUIDv8
+   MUST be `0x8` for UUIDv8
 3. UUID variant\
    (2 bits)\
-   Always `0b10` per the UUIDv8 spec
+   MUST be `0b10` per the UUIDv8 spec
 4. TNID variant\
    (2 bits)\
    Denotes the TNID variant; decides how the data bits are used
@@ -86,9 +92,9 @@ bits.
    (43 bits)
 3. UUID version\
    (4 bits)
-4. UUID variant (bits `0b10` per the UUIDv8 spec)\
+4. UUID variant (MUST be `0b10` per the UUIDv8 spec)\
    (2 bits)
-5. TNID variant (bits `0b00` for variant 0)\
+5. TNID variant (MUST be `0b00` for variant 0)\
    (2 bits)
 6. Random bits\
    (57 bits)
@@ -147,7 +153,7 @@ type).
 
 Since the time component only uses 43 bits to represent milliseconds, TNIDv0 IDs
 can only be created until the year 2248. At that point what happens is
-undefined, however implementations are encouraged to handle this case gracefully
+undefined, however implementations SHOULD handle this case gracefully
 (the reference Rust implementation chooses to allow the int to wrap around).
 
 ### Variant 1
@@ -173,9 +179,9 @@ UUIDv4.
    (100 bits)
 3. UUID version\
    (4 bits)
-4. UUID variant (bits 0b10 per the spec)\
+4. UUID variant (MUST be `0b10` per the spec)\
    (2 bits)
-5. TNID variant (bits 0b01 for variant 1)\
+5. TNID variant (MUST be `0b01` for variant 1)\
    (2 bits)
 
 #### Goals and Non-goals
@@ -231,14 +237,14 @@ A TNID with name "test" and variant 1:
 
 `<name>.<encoded-data>`
 
-**name**: The TNID name as ascii chars. Must be 1 to 4 of the
+**name**: The TNID name as ascii chars. MUST be 1 to 4 of the
 [allowed TNID Name Encoding characters](#tnid-name-encoding).
 
 **encoded-data**: The [TNID Data Encoding](#tnid-data-encoding) of the (1) TNID
 variant and (2) the TNID Data Bits (see [layout](#bit-layout)). These are taken
 in the order they appear: the first 40 data bits, (skipping the UUID version
 bits) then the 2 TNID variant bits, (skipping the UUID variant bits) then the
-remaining 60 data bits. Must be 17 characters.
+remaining 60 data bits. MUST be 17 characters.
 
 Example: `test.Br2flcNDfF6LYICnT`
 
