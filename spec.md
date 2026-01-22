@@ -1,6 +1,6 @@
 # TNID Spec
 
-Version: 0
+Version: 0\
 Status: Draft
 
 TNIDs are based on
@@ -20,9 +20,29 @@ TNIDs include some extra features that developers may find useful:
 
 ## Terminology
 
-The key words "MUST", "MUST NOT", "SHOULD", "SHOULD NOT", and "MAY" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "SHOULD", "SHOULD NOT", and "MAY" in this
+document are to be interpreted as described in
+[RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
-**TNID Variant:** A scheme for interpreting the Data Bits. TNID uses the term "variant" analogously to how UUID uses "version" to denote different structural interpretations.
+**TNID Variant:** A scheme for interpreting the Payload bits. TNID uses the term
+"variant" analogously to how UUID uses "version" to denote different structural
+interpretations.
+
+### Bit Terminology
+
+TNIDs are 128 bits total, organized into the following components:
+
+- **128 bits total**
+  - **TNID-specific bits (122)**: All bits specific to TNID (not dictated by
+    UUID)
+    - **Name bits (20)**: The TNID name field
+    - **Data bits (102)**: The bits encoded in the 17-character data portion of
+      a TNID string
+      - **TNID Variant bits (2)**: Selects which TNID variant is used
+      - **Payload bits (100)**: Variant-specific data
+  - **UUID-specific bits (6)**: Bits required by the UUIDv8 specification
+    - **UUID Version (4)**
+    - **UUID Variant (2)**
 
 ## Bit Layout
 
@@ -70,8 +90,7 @@ Parsers SHOULD accept TNIDs with reserved variants.
 ### Variant 0
 
 Variant 0 is meant to be time sortable when sorted by its three representations
-(u128, UUID hex, and TNID string). Its use case and design is similar to
-UUIDv7.
+(u128, UUID hex, and TNID string). Its use case and design is similar to UUIDv7.
 
 Thus, it uses the TNID Data Bits to store (a) some time data and (b) some random
 bits.
@@ -219,18 +238,19 @@ Reserved for future definition.
 
 TNIDs are 128 bits and can be represented any way a UUID can (hex string, bytes,
 integer, etc.). TNIDs also define their own string format with advantages over
-UUID's [typical hex representation](https://datatracker.ietf.org/doc/html/rfc9562#name-uuid-format).
+UUID's
+[typical hex representation](https://datatracker.ietf.org/doc/html/rfc9562#name-uuid-format).
 
 <details>
 <summary>Example: The same TNID in different formats</summary>
 
 A TNID with name "test" and variant 1:
 
-| Format | Value |
-|--------|-------|
-| TNID string | `test.x8MRU0xetVa6QZeZR` |
-| u128 hex | `0xCAB19F495DC78C1F9AB98261DB92A91C` |
-| UUID hex | `cab19f49-5dc7-8c1f-9ab9-8261db92a91c` |
+| Format             | Value                                             |
+| ------------------ | ------------------------------------------------- |
+| TNID string        | `test.x8MRU0xetVa6QZeZR`                          |
+| u128 hex           | `0xCAB19F495DC78C1F9AB98261DB92A91C`              |
+| UUID hex           | `cab19f49-5dc7-8c1f-9ab9-8261db92a91c`            |
 | Bytes (big-endian) | `CA B1 9F 49 5D C7 8C 1F 9A B9 82 61 DB 92 A9 1C` |
 
 </details>
