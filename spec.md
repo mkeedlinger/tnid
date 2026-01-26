@@ -69,9 +69,9 @@ Below is the common aspects of all TNID variants.
    MUST be `0b10` per the UUIDv8 spec
 4. TNID variant\
    (2 bits)\
-   Denotes the TNID variant; decides how the data bits are used
-5. TNID Data Bits These bits are available for use by each
-   [TNID variant](#tnid-variants)\
+   Denotes the TNID variant; decides how the payload bits are used
+5. Payload bits\
+   These bits are available for use by each [TNID variant](#tnid-variants)\
    (100 bits)
 
 ## TNID variants
@@ -92,7 +92,7 @@ Parsers SHOULD accept TNIDs with reserved variants.
 Variant 0 is meant to be time sortable when sorted by its three representations
 (u128, UUID hex, and TNID string). Its use case and design is similar to UUIDv7.
 
-Thus, it uses the TNID Data Bits to store (a) some time data and (b) some random
+Thus, it uses the Payload bits to store (a) some time data and (b) some random
 bits.
 
 #### Layout
@@ -262,11 +262,11 @@ A TNID with name "test" and variant 1:
 **name**: The TNID name as ascii chars. MUST be 1 to 4 of the
 [allowed TNID Name Encoding characters](#tnid-name-encoding).
 
-**encoded-data**: The [TNID Data Encoding](#tnid-data-encoding) of the (1) TNID
-variant and (2) the TNID Data Bits (see [layout](#bit-layout)). These are taken
-in the order they appear: the first 40 data bits, (skipping the UUID version
-bits) then the 2 TNID variant bits, (skipping the UUID variant bits) then the
-remaining 60 data bits. MUST be 17 characters.
+**encoded-data**: The [TNID Data Encoding](#tnid-data-encoding) of the Data bits
+(102 bits total: TNID Variant bits + Payload bits). These are taken in the order
+they appear: the first 40 payload bits, (skipping the UUID version bits) then
+the 2 TNID variant bits, (skipping the UUID variant bits) then the remaining 60
+payload bits. MUST be 17 characters.
 
 Example: `test.Br2flcNDfF6LYICnT`
 
@@ -347,10 +347,10 @@ encoded chars, and the remaining 10 bits would all be zeroes (nulls).
 
 This encoding is used for the data portion of a [TNID String](#tnid-string)
 (after the `.`). To reconstruct the full 128-bit TNID from a string, you need
-the TNID Variant and TNID Data bits (see [layout](#bit-layout)). The name
-appears before the `.`, and the UUID version/variant are constants dictated by
-this spec (and the UUID spec that this complies with). This leaves 102 bits,
-which divides evenly into 17 six-bit chunks (102 = 17 × 6), requiring no
+the Data bits (see [layout](#bit-layout)). The name appears before the `.`, and
+the UUID version/variant are constants dictated by this spec (and the UUID spec
+that this complies with). This leaves 102 Data bits (TNID Variant bits + Payload
+bits), which divides evenly into 17 six-bit chunks (102 = 17 × 6), requiring no
 padding.
 
 These 17 chunks are encoded using a base64-_like_ encoding (but _not_
