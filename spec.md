@@ -452,3 +452,110 @@ or other features for increased time precision or entropy.
 
 Such cases are exceedingly rare, and TNIDs are designed to increase usablility
 for the more common cases.
+
+## Extensions
+
+Extensions define optional functionality that implementations MAY provide.
+Implementations that support an extension MUST follow the extension's
+specification exactly to ensure interoperability.
+
+### V0/V1 Encryption
+
+This extension defines reversible encryption between V0 and V1 TNIDs, converting
+V0 (time-ordered) TNIDs to V1 (high-entropy) TNIDs such that they are
+indistinguishable from randomly generated V1 TNIDs.
+
+#### Use Case
+
+V0 TNIDs expose creation time, which may reveal:
+
+- When a resource was created
+- The order resources were created
+- Approximate creation rates
+
+Encrypting V0 to V1 produces a valid V1 TNID that hides this information while
+remaining decryptable with the same key.
+
+A common use would be having V0 TNIDs on a backend for performance gains in a
+DB, while only exposing V1 TNIDs to the frontend.
+
+#### Payload Bits
+
+The 100 Payload bits are the bits encrypted by this extension. They appear in
+three non-contiguous sections:
+
+`nnnn.nnnn.nnnn.nnnn.nnnn.LLLL.LLLL.LLLL`-
+
+`LLLL.LLLL.LLLL.LLLL`-
+
+`vvvv.MMMM.MMMM.MMMM`-
+
+`rrtt.RRRR.RRRR.RRRR`-
+
+`RRRR.RRRR.RRRR.RRRR.RRRR.RRRR.RRRR.RRRR.RRRR.RRRR.RRRR.RRRR`
+
+- n = Name (20 bits, unchanged)
+- L = Payload left section (28 bits, positions 80–107)
+- v = UUID version (4 bits, unchanged)
+- M = Payload middle section (12 bits, positions 64–75)
+- r = UUID variant (2 bits, unchanged)
+- t = TNID variant (2 bits, changed between V0/V1)
+- R = Payload right section (60 bits, positions 0–59)
+
+Total Payload: 28 + 12 + 60 = 100 bits
+
+#### Payload Extraction
+
+To encrypt or decrypt, the three Payload sections are extracted and compacted
+into a contiguous 100-bit value:
+
+`LLLL.LLLL.LLLL.LLLL.LLLL.LLLL.LLLL.MMMM.MMMM.MMMM.RRRR.RRRR.RRRR`
+`RRRR.RRRR.RRRR.RRRR.RRRR.RRRR.RRRR.RRRR.RRRR.RRRR.RRRR.RRRR`
+
+Most significant bits first (left section, then middle, then right).
+
+#### Algorithm
+
+Payload encryption uses FF1 format-preserving encryption as defined in
+[NIST SP 800-38G](https://csrc.nist.gov/pubs/sp/800/38/g/upd1/final).
+
+| Parameter    | Value                             |
+| ------------ | --------------------------------- |
+| Block cipher | AES-128                           |
+| Key          | 128 bits, big-endian byte order   |
+| Radix        | 16 (hexadecimal)                  |
+| Input        | 25 digits, most significant first |
+| Tweak        | Empty (0 bytes)                   |
+| Rounds       | 10                                |
+
+The compacted 100-bit Payload is interpreted as 25 hexadecimal digits (4 bits
+each), most significant digit first, before being passed to FF1.
+
+#### Encrypt (V0 → V1)
+
+1. Extract the three Payload sections from the TNID
+2. Compact into a 100-bit value (left || middle || right)
+3. Convert to 25 hexadecimal digits, most significant first
+4. Apply FF1 encryption
+5. Convert the 25 encrypted digits back to a 100-bit value
+6. Expand and place back into the three Payload sections
+7. Set the TNID Variant bits to `0b01` (V1)
+
+If input is already V1, implementations SHOULD return it unchanged.
+
+#### Decrypt (V1 → V0)
+
+1. Extract the three Payload sections from the TNID
+2. Compact into a 100-bit value (left || middle || right)
+3. Convert to 25 hexadecimal digits, most significant first
+4. Apply FF1 decryption
+5. Convert the 25 decrypted digits back to a 100-bit value
+6. Expand and place back into the three Payload sections
+7. Set the TNID Variant bits to `0b00` (V0)
+
+If input is already V0, implementations SHOULD return it unchanged.
+
+#### Interoperability
+
+Implementations MUST produce byte-identical output for identical inputs and
+keys. The Rust reference implementation can be used to verify conformance.
