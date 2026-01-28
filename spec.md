@@ -32,17 +32,17 @@ interpretations.
 
 TNIDs are 128 bits total, organized into the following components:
 
-- **128 bits total**
-  - **TNID-specific bits (122)**: All bits specific to TNID (not dictated by
-    UUID)
-    - **Name bits (20)**: The TNID name field
-    - **Data bits (102)**: The bits encoded in the 17-character data portion of
-      a TNID string
-      - **TNID Variant bits (2)**: Selects which TNID variant is used
-      - **Payload bits (100)**: Variant-specific data
-  - **UUID-specific bits (6)**: Bits required by the UUIDv8 specification
-    - **UUID Version (4)**
-    - **UUID Variant (2)**
+- **Total** (128 bits)
+  - **TNID-specific bits** (122 bits): All bits specific to TNID (not dictated
+    by UUID)
+    - **Name bits** (20 bits): The TNID name field
+    - **Data bits** (102 bits): The bits encoded in the 17-character data
+      portion of a TNID string
+      - **TNID Variant bits** (2 bits): Selects which TNID variant is used
+      - **Payload bits** (100 bits): Variant-specific data
+  - **UUID-specific bits** (6 bits): Bits required by the UUIDv8 specification
+    - **UUID Version** (4 bits)
+    - **UUID Variant** (2 bits)
 
 ## Bit Layout
 
