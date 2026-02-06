@@ -453,9 +453,9 @@ or other features for increased time precision or entropy.
 Such cases are exceedingly rare, and TNIDs are designed to increase usablility
 for the more common cases.
 
-## Extensions
+## Optional Extensions
 
-Extensions define optional functionality that implementations MAY provide.
+Optional extensions define functionality that implementations MAY provide.
 Implementations that support an extension MUST follow the extension's
 specification exactly to ensure interoperability.
 
@@ -559,3 +559,72 @@ If input is already V0, implementations SHOULD return it unchanged.
 
 Implementations MUST produce byte-identical output for identical inputs and
 keys. The Rust reference implementation can be used to verify conformance.
+
+### Blocklist Filtering
+
+This extension defines generation functions that produce TNIDs guaranteed not to
+contain specified substrings (e.g., profanity) in their TNID string
+representation.
+
+#### Use Case
+
+The 17-character data portion of a TNID string uses a 64-character alphabet that
+includes letters capable of forming recognizable words. For some applications,
+it may be undesirable for IDs to accidentally contain offensive terms.
+
+This extension provides generation functions that retry until producing an ID
+free of blocklisted words.
+
+#### Blocklist
+
+A blocklist is a set of patterns to match against the data string portion of the
+TNID (the 17 characters after the `.`). Implementations:
+
+- MUST perform case-insensitive substring matching
+- MUST NOT modify the blocklist patterns during matching
+
+The blocklist is user-provided; this extension does not define a default list.
+
+#### Generation Strategy
+
+##### V1
+
+Since all V1 payload bits are random, simply regenerate until no match is found.
+
+##### V0
+
+For V0 TNIDs, the data string characters derive from different bit sources (see
+[Variant 0 Layout](#layout)):
+
+- Characters 0-6 are determined entirely by the timestamp
+- Character 7 contains timestamp, variant, and random bits
+- Characters 8-16 are determined entirely by random bits
+
+This distinction matters for resolving matches efficiently:
+
+- If a match touches character 7 or later (the random portion),
+  implementations SHOULD regenerate the random bits.
+- If a match is entirely in characters 0-6 (the timestamp portion),
+  regenerating random bits will not help. Implementations SHOULD advance the
+  timestamp far enough to change the rightmost (least significant) character
+  of the match. This is the smallest jump that guarantees the matched
+  substring changes, avoiding incremental searches through a potentially
+  large "bad window."
+
+Implementations MUST return an error rather than blocking indefinitely.
+
+##### V0 for Encryption
+
+When used together with the [V0/V1 Encryption](#v0v1-encryption) extension,
+implementations SHOULD check both the V0 data string and the encrypted V1 data
+string against the blocklist, using the same V0 resolution strategy described
+above.
+
+#### Interoperability
+
+Filtered generation is non-deterministic. Implementations need not produce
+identical outputs.
+
+However, implementations MUST correctly identify blocklist matches using
+case-insensitive substring matching, and the resulting TNIDs MUST contain no
+blocklisted words in their data string.
