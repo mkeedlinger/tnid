@@ -541,7 +541,8 @@ each), most significant digit first, before being passed to FF1.
 6. Expand and place back into the three Payload sections
 7. Set the TNID Variant bits to `0b01` (V1)
 
-If input is already V1, implementations SHOULD return it unchanged.
+If input is already V1, implementations SHOULD reject it with an error rather
+than return it unchanged.
 
 #### Decrypt (V1 → V0)
 
@@ -553,7 +554,10 @@ If input is already V1, implementations SHOULD return it unchanged.
 6. Expand and place back into the three Payload sections
 7. Set the TNID Variant bits to `0b00` (V0)
 
-If input is already V0, implementations SHOULD return it unchanged.
+If input is already V0, implementations SHOULD reject it with an error rather
+than return it unchanged. If a V0 reaches decryption, an unencrypted TNID has
+probably leaked out and come back. If a V1 reaches encryption, one has probably
+been stored still encrypted. An error exposes either case.
 
 #### Interoperability
 
