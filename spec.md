@@ -222,9 +222,25 @@ Non-goals:
 ##### Collisions
 
 Compared to UUIDv4, TNIDv1 has 22 fewer random bits (UUIDv4 has 122 entropy
-bits, while TNIDv1 has 100). Assuming you created 100 billion IDs every second
-for 20 years straight, you will use 0.00000029% of the possible addresses. For
-most use cases this is expected to be vastly sufficient.
+bits, while TNIDv1 has 100). Only TNIDs with the same name can collide.
+Assuming you created 100 million IDs every day for 20 years straight, all under
+one name, the chance of any collision is about 1 in 5 million. For most use
+cases this is expected to be vastly sufficient.
+
+<details>
+<summary>Math</summary>
+Collision probability follows the birthday paradox: 1 - e^(-n²/2N) where N = 2^100
+
+| IDs per day, one name | Total after 20 years | Chance of any collision |
+| --- | --- | --- |
+| 100 thousand | 730 million | 1 in 4.8 trillion |
+| 1 million | 7.3 billion | 1 in 48 billion |
+| 10 million | 73 billion | 1 in 480 million |
+| 100 million | 730 billion | 1 in 4.8 million |
+| 1 billion | 7.3 trillion | 1 in 48,000 |
+| 10 billion | 73 trillion | 1 in 480 |
+
+</details>
 
 ### Variant 2
 
