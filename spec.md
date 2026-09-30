@@ -294,7 +294,7 @@ character representation.
 
 An attempt was made to use only "safe" characters. For example, all characters
 used in both encodings are URL safe (unreserved characters per
-[RFC 3986](https://www.rfc-editor.org/rfc/rfc3986#section-2.2)), meaning TNIDs
+[RFC 3986](https://www.rfc-editor.org/rfc/rfc3986#section-2.3)), meaning TNIDs
 can be used in URLs without percent-encoding.
 
 ### TNID Name Encoding
