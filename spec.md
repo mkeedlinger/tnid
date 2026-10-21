@@ -371,24 +371,24 @@ padding.
 
 These 17 chunks are encoded using a base64-_like_ encoding (but _not_
 [RFC 4648 base64](https://datatracker.ietf.org/doc/html/rfc4648#section-4)).
-Below, each symbol (1-9, A-H) represents one of the 17 encoded characters. Since
+Below, each symbol (0-9, A-G) represents one of the 17 encoded characters. Since
 6-bit characters don't align with 4-bit nibbles, they overlap at boundaries:
 
-`nnnn.nnnn.nnnn.nnnn.nnnn.1111.1122.2222`-
+`nnnn.nnnn.nnnn.nnnn.nnnn.0000.0011.1111`-
 
-`3333.3344.4444.5555`-
+`2222.2233.3333.4444`-
 
-`vvvv.5566.6666.7777`-
+`vvvv.4455.5555.6666`-
 
-`uutt.8888.8899.9999`-
+`uutt.7777.7788.8888`-
 
-`AAAA.AABB.BBBB.CCCC.CCDD.DDDD.EEEE.EEFF.FFFF.GGGG.GGHH.HHHH`
+`9999.99AA.AAAA.BBBB.BBCC.CCCC.DDDD.DDEE.EEEE.FFFF.FFGG.GGGG`
 
 - n = Name (20 bits)
 - v = UUID version (4 bits, skipped)
 - u = UUID variant (2 bits, skipped)
-- t = TNID variant (2 bits, last 2 bits of character 7)
-- 1-9, A-H = The 17 encoded characters (6 bits each)
+- t = TNID variant (2 bits, last 2 bits of character 6)
+- 0-9, A-G = The 17 encoded characters (6 bits each)
 
 #### Mapping
 
@@ -614,10 +614,11 @@ Since all V1 payload bits are random, simply regenerate until no match is found.
 ##### V0
 
 For V0 TNIDs, the data string characters derive from different bit sources (see
-[Variant 0 Layout](#layout)):
+[Variant 0 Layout](#layout) and [TNID Data Encoding](#tnid-data-encoding)):
 
-- Characters 0-6 are determined entirely by the timestamp
-- Character 7 contains timestamp, variant, and random bits
+- Characters 0-5 are determined entirely by the timestamp
+- Character 6 contains timestamp bits and the variant bits (constant for V0)
+- Character 7 contains timestamp and random bits
 - Characters 8-16 are determined entirely by random bits
 
 This distinction matters for resolving matches efficiently:
