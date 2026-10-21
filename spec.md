@@ -538,11 +538,10 @@ Payload encryption uses FF1 format-preserving encryption as defined in
 | Parameter    | Value                             |
 | ------------ | --------------------------------- |
 | Block cipher | AES-128                           |
-| Key          | 128 bits, big-endian byte order   |
+| Key          | 128 bits (16 bytes)               |
 | Radix        | 16 (hexadecimal)                  |
 | Input        | 25 digits, most significant first |
 | Tweak        | Empty (0 bytes)                   |
-| Rounds       | 10                                |
 
 The compacted 100-bit Payload is interpreted as 25 hexadecimal digits (4 bits
 each), most significant digit first, before being passed to FF1.
