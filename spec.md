@@ -633,12 +633,13 @@ This distinction matters for resolving matches efficiently:
 
 Implementations MUST return an error rather than blocking indefinitely.
 
-##### V0 for Encryption
+##### V0 with Encryption
 
 When used together with the [V0/V1 Encryption](#v0v1-encryption) extension,
 implementations SHOULD check both the V0 data string and the encrypted V1 data
-string against the blocklist, using the same V0 resolution strategy described
-above.
+string against the blocklist. A match in the V0 string is resolved as described
+above. A match in the V1 string is resolved by regenerating the random bits,
+since that changes the whole encrypted string.
 
 #### Interoperability
 
