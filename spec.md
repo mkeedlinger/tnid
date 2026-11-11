@@ -1,7 +1,7 @@
 # TNID Spec
 
-Version: 0\
-Status: Draft
+Version: 1.0\
+Status: Stable
 
 TNIDs are based on
 [UUIDv8](https://datatracker.ietf.org/doc/html/rfc9562#name-uuid-version-8).
