@@ -23,6 +23,14 @@ TNIDs maintain full UUID compatibility while adding:
 
 TNIDs work anywhere a UUID is expected; all valid TNIDs are valid UUIDs.
 
+## Project background
+
+I made the main bits of TNID—the bit layout, the two current variants, and the
+original core Rust implementation—by hand, before AI was very capable or common.
+I’m not against AI. It’s helped review this project and even made some components
+outright, like the site. But I didn’t “vibe” the standard or the core Rust
+implementation.
+
 ## Resources
 
 - [spec.md](./spec.md) - Full specification
